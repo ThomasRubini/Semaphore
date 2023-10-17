@@ -25,22 +25,35 @@ public:
 
     void phase1() {
         this->mutex.lock();
+        std::cout << (std::to_string(getid()) + " enter mutex in phase1 with count="+std::to_string(this->count)) << std::endl;
         this->count += 1;
+        std::cout << (std::to_string(getid()) + " after incr in phase1, count="+std::to_string(this->count)) << std::endl;
         if (this->count == this->n) {
             // release n times
             for(unsigned i=0;i<this->n;i++)this->turnstile.release();
         }
+        std::cout << (std::to_string(getid()) + " exit mutex in phase1 with count="+std::to_string(this->count)) << std::endl;
         this->mutex.unlock();
         this->turnstile.acquire();
     }
 
+    size_t getid() {
+        return std::hash<std::thread::id>{}(std::this_thread::get_id());
+    }
+
     void phase2() {
         this->mutex.lock();
+        std::cout << (std::to_string(getid()) + " enter mutex in phase2 with count="+std::to_string(this->count)) << std::endl;
         this->count -= 1;
+        std::cout << (std::to_string(getid()) + " after decr in phase2, count="+std::to_string(this->count)) << std::endl;
         if (this->count == 0) {
             // release n times
-            for (unsigned i=0; i<this->n; i++) this->turnstile2.release();
+            for (unsigned i=0; i<this->n; i++) {
+                this->turnstile2.release();
+                std::cout << "release" << std::endl;
+            }
         }
+        std::cout << (std::to_string(getid()) + " exit mutex in phase2 with count="+std::to_string(this->count)) << std::endl;
         this->mutex.unlock();
         this->turnstile2.acquire();
     }
@@ -147,23 +160,38 @@ void serf_fun() {
 }
 
 int main(){
-    // prepare hackers and serfs
-    std::vector<std::thread> hackers;
-    for (unsigned i = 0; i < 10; i++) {
-        hackers.emplace_back(hacker_fun);
+    std::cout << "Start" << std::endl;
+    // 4 original threads
+
+    std::vector<std::thread> threads;
+    for(unsigned i=0;i<8;i++) {
+        threads.emplace_back([]() {
+            barrier.wait();
+        });
     }
 
-    std::vector<std::thread> serfs;
-    for (unsigned i = 0; i < 10; i++) {
-        serfs.emplace_back(serf_fun);
+    // fin
+    for(auto &thr : threads) {
+        thr.join();
     }
+    
+    // barrier.phase1();
+    // barrier.phase1();
+    // barrier.phase1();
 
-    // join hackers and serfs (to ensure main exits last)
-    for (auto &hacker : hackers) {
-        hacker.join();
-    }
+    // 4 other threads that come after the first turnstile has been closed, the second opened, but the 4 original threads did not come through phase 2 yet
+    // barrier.phase1();
+    // barrier.phase1();
+    // barrier.phase1();
+    // barrier.phase1();
 
-    for (auto &serf : serfs) {
-        serf.join();
-    }
+    // make the 4 original threads go through phase 2
+    // barrier.phase2();
+    // barrier.phase2();
+    // barrier.phase2();
+    // barrier.phase2();
+
+    // now, we have 4 threads waiting in the aquire of phase1(), but the only way to release them is to have count=4, and we already have count=4, so adding another threading will only make it go higher
+    // SOFTLOCK
+    std::cout << "End" << std::endl;
 }
