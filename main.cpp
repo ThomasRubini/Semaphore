@@ -12,6 +12,8 @@ class Barrier {
 private:
     unsigned n;
     unsigned count;
+    unsigned secondTurnstileArriving;
+    bool firstTurnstileOpen;
     std::mutex mutex;
     std::counting_semaphore<> turnstile;
     std::counting_semaphore<> turnstile2;
@@ -19,6 +21,7 @@ private:
 public:
     // crée une barrière qui s'ouvre à n entité
     Barrier(unsigned n) : turnstile(0), turnstile2(0) {
+        this->firstTurnstileOpen = true;
         this->n = n;
         this->count = 0;
     }
@@ -26,9 +29,12 @@ public:
     void phase1() {
         this->mutex.lock();
         this->count += 1;
-        if (this->count == this->n) {
+        if (this->count >= this->n && this->firstTurnstileOpen) {
             // release n times
             for(unsigned i=0;i<this->n;i++)this->turnstile.release();
+            this->firstTurnstileOpen = false;
+            this->secondTurnstileArriving = this->n;
+            this->count-=this->n;
         }
         this->mutex.unlock();
         this->turnstile.acquire();
@@ -36,10 +42,11 @@ public:
 
     void phase2() {
         this->mutex.lock();
-        this->count -= 1;
-        if (this->count == 0) {
+        this->secondTurnstileArriving -= 1;
+        if (this->secondTurnstileArriving == 0) {
             // release n times
             for (unsigned i=0; i<this->n; i++) this->turnstile2.release();
+            this->firstTurnstileOpen = true;
         }
         this->mutex.unlock();
         this->turnstile2.acquire();
