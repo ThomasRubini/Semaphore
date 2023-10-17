@@ -7,11 +7,58 @@
 
 using namespace std::chrono_literals;
 
+// Barrier
+class Barrier {
+private:
+    unsigned n;
+    unsigned count;
+    std::mutex mutex;
+    std::counting_semaphore<> turnstile;
+    std::counting_semaphore<> turnstile2;
+    
+public:
+    // crée une barrière qui s'ouvre à n entité
+    Barrier(unsigned n) : turnstile(0), turnstile2(0) {
+        this->n = n;
+        this->count = 0;
+    }
+
+    void phase1() {
+        this->mutex.lock();
+        this->count += 1;
+        if (this->count == this->n) {
+            // release n times
+            for(unsigned i=0;i<this->n;i++)this->turnstile.release();
+        }
+        this->mutex.unlock();
+        this->turnstile.acquire();
+    }
+
+    void phase2() {
+        this->mutex.lock();
+        this->count -= 1;
+        if (this->count == 0) {
+            // release n times
+            for (unsigned i=0; i<this->n; i++) this->turnstile2.release();
+        }
+        this->mutex.unlock();
+        this->turnstile2.acquire();
+    }
+
+    void wait() {
+        this->phase1();
+        this->phase2();
+    }
+};
+
+// River problem
+
 std::mutex mutex;
 unsigned hackers = 0;
 unsigned serfs = 0;
 std::counting_semaphore hackersQueue(0);
 std::counting_semaphore serfsQueue(0);
+Barrier barrier(4);
 
 void board(const std::string &type) {
     std::cout << type + " is boarding" << std::endl;
@@ -52,6 +99,7 @@ void hacker_fun() {
     }
 
     board("hacker");
+    barrier.wait();
 
     if (isCaptain) {
         rowBoat();
@@ -90,6 +138,7 @@ void serf_fun() {
     }
 
     board("serf");
+    barrier.wait();
 
     if (isCaptain) {
         rowBoat();
