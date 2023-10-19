@@ -83,7 +83,7 @@ void serf_fun() {
         mutex.unlock();
     }
 
-    // block serfs until captain sais we can board (via signal())
+    // block serfs until captain says we can board (via signal())
     serfsQueue.acquire();
 
     if (isCaptain) {
