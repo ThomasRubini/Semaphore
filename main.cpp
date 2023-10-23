@@ -46,7 +46,7 @@ void hacker_fun() {
         mutex.unlock(); // if a combination has not been achieved, release the mutex
     }
 
-    hackersQueue.acquire(); // block hackers until captain sais we can board (via signal())
+    hackersQueue.acquire(); // block hackers until captain says we can board (via signal())
 
     if (isCaptain) {
         std::cout << "4 people were found. Boarding new boat" << std::endl;
